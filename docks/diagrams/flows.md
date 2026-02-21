@@ -19,72 +19,146 @@ flowchart LR
 
 ---
 
-## 2. Login Flow (Auth Service)
-
+## 2. Create Comment  (Comment Service)
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant A as Auth Service
-    participant DB as Auth DB
+    actor User
+    participant System
+    participant Moderator
 
-    U->>A: POST /login (username, password)
-    A->>DB: Verify password hash
-    DB-->>A: OK
-    A-->>U: Return JWT (access token)
-```
+    User->>System: Write Comment
+    User->>System: Submit Comment
+
+    System->>System: Validate Comment
+
+    alt Validation Failed
+        System-->>User: Show Validation Error
+    else Validation Passed
+        System->>System: Create Comment (state=Pending)
+        System->>Moderator: Send for Moderation
+
+        Moderator->>System: Review Comment
+
+        alt Approved
+            System->>System: Set State = Approved
+            System-->>User: Notify Approved
+        else Rejected
+            System->>System: Set State = Rejected (Store Reason)
+            System-->>User: Notify Rejected
+        end
+    end
+```    
 
 ---
 
-## 3. Create Comment Flow
+## 3. Delete  Comment Flow
 
 ```mermaid
 sequenceDiagram
-    participant U as User
-    participant C as Commenting Service
-    participant DB as Commenting DB
+    actor User
+    participant System
 
-    U->>C: POST /comments (Bearer JWT, content)
-    C->>C: Validate JWT (signature + expiry)
-    C->>C: Validate input
-    C->>DB: Insert comment(userId, content)
-    DB-->>C: OK
-    C-->>U: 201 Created
-```
+    User->>System: Request Comment Deletion
 
----
+    System->>System: Validate Deletion Request (Authorization + State)
 
-## 4. Delete Comment Flow (Authorization Check)
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant C as Commenting Service
-    participant DB as Commenting DB
-
-    U->>C: DELETE /comments/{id} (Bearer JWT)
-    C->>C: Validate JWT
-    C->>DB: SELECT ownerId FROM comments
-    DB-->>C: ownerId
-
-    alt User is owner OR role is admin/mod
-        C->>DB: DELETE comment
-        DB-->>C: OK
-        C-->>U: 204 No Content
-    else Not authorized
-        C-->>U: 403 Forbidden
+    alt Deletion Not Allowed
+        System-->>User: Reject Deletion
+    else Deletion Allowed
+        System->>System: Mark Comment as Deleted
+        System->>System: Set DeletedAt, DeletedBy, Reason?
+        System-->>User: Notify Deletion Success
     end
 ```
 
 ---
 
-## 5. Service-to-Service (JWT Public Key Fetch)
+## 4. Edit Comment Flow 
 
 ```mermaid
 sequenceDiagram
-    participant C as Commenting Service
-    participant A as Auth Service
+    actor User
+    participant System
+    participant Moderator
 
-    C->>A: GET /.well-known/jwks.json
-    A-->>C: Return public keys (JWKS)
-    C->>C: Cache keys for token validation
+    User->>System: Request Comment Edit (Proposed Content)
+
+    System->>System: Validate Permission + Content
+
+    alt Invalid Request
+        System-->>User: Reject Edit Request
+    else Valid
+        System->>System: Create EditRequest (Pending)
+        System->>Moderator: Send EditRequest for Review
+
+        Moderator->>System: Review EditRequest
+
+        alt Approved
+            System->>System: Apply Edit Atomically
+            System->>System: Update Comment Content
+            System->>System: Mark EditRequest Approved
+            System-->>User: Notify Approved
+        else Rejected
+            System->>System: Mark EditRequest Rejected (Store Reason)
+            System-->>User: Notify Rejected
+        end
+    end
 ```
+
+---
+
+## 5. Replay flow
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant System
+    participant Moderator
+
+    User->>System: Write Reply
+    User->>System: Submit Reply
+
+    System->>System: Validate Reply (Auth + Integrity + Content)
+
+    alt Validation Failed
+        System-->>User: Reject Reply
+    else Validation Passed
+        System->>System: Create Reply (state=Pending)
+        System->>Moderator: Send Reply for Moderation
+
+        Moderator->>System: Review Reply
+
+        alt Approved
+            System->>System: Set State = Approved
+            System-->>User: Notify Approved
+        else Rejected
+            System->>System: Set State = Rejected (Store Reason)
+            System-->>User: Notify Rejected
+        end
+    end
+```
+
+## 6. Upvote Flow (Toggle Behavior)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant System
+
+    User->>System: Commit Upvote
+
+    System->>System: Validate Auth + Comment Visibility
+
+    System->>System: Check if Vote Exists
+
+    alt Vote Exists
+        System->>System: Remove Vote
+        System->>System: Decrement UpvoteCount
+        System-->>User: State = Not Voted
+    else Vote Not Exists
+        System->>System: Create Vote
+        System->>System: Increment UpvoteCount
+        System-->>User: State = Voted
+    end
+```    
+
