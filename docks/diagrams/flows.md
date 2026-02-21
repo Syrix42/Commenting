@@ -192,9 +192,8 @@ sequenceDiagram
 
 
 ## Ban User by Admin (with period + reason)
-
 ```mermaid
- sequenceDiagram
+sequenceDiagram
     actor Admin
     participant System
 
@@ -205,21 +204,21 @@ sequenceDiagram
     alt Not Authorized
         System-->>Admin: Reject (Forbidden)
     else Authorized
-        System->>System: Validate Inputs (Duration, Reason required)
+        System->>System: Validate Inputs (Duration + Reason required)
 
         alt Invalid Input
             System-->>Admin: Reject (Validation Error)
-        else Valid
+        else Valid Input
             System->>System: Load User(UserId)
 
             alt User Not Found
                 System-->>Admin: Reject (Not Found)
             else User Found
-                System->>System: Set User.Status = Banned
+                System->>System: Set Status = Banned
                 System->>System: Set BannedUntil = Now + Duration
-                System->>System: Store BanReason = Reason
+                System->>System: Store BanReason
                 System-->>Admin: Confirm Ban Applied
             end
         end
     end
-    ``` 
+```
