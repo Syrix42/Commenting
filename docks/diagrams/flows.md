@@ -8,8 +8,8 @@ This document contains the main architecture and flow diagrams for the Commentin
 
 ```mermaid
 flowchart LR
-    U[Client] --> A[Auth Service (Go)]
-    U --> C[Commenting Service (.NET)]
+    U[Client] --> A[Auth Service - Go]
+    U --> C[Commenting Service - .NET]
 
     A --> ADB[(Auth DB - PostgreSQL)]
     C --> CDB[(Commenting DB - PostgreSQL)]
