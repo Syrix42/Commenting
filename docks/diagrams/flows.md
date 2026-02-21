@@ -12,7 +12,10 @@ flowchart LR
 
   C <--> A
   
+  ```
   
+  
+  ```mermaid
   sequenceDiagram
   participant U as User
   participant A as Auth Service
@@ -22,3 +25,4 @@ flowchart LR
   A->>DB: Verify password
   DB-->>A: OK
   A-->>U: Return JWT
+  ```
